@@ -8,6 +8,7 @@ A production-ready REST API for ingesting and querying events, built with FastAP
 - **SQLAlchemy 2.0** — async ORM with connection pooling
 - **PostgreSQL 16** — primary data store
 - **structlog** — structured JSON logging
+- **slowapi** — IP-based rate limiting per endpoint
 - **pytest + pytest-asyncio + testcontainers** — async test suite (Postgres via Docker, spun up automatically)
 
 ## API
@@ -50,6 +51,19 @@ docker compose up --build
 
 Interactive docs available at `http://localhost:8000/docs` once running.
 
+## Rate Limiting
+
+All write and read endpoints are rate-limited per client IP. Exceeding the limit returns `429 Too Many Requests` with a `Retry-After: 60` header.
+
+| Endpoint | Default limit |
+|----------|---------------|
+| `POST /events` | 100/minute |
+| `POST /events/bulk` | 20/minute |
+| `GET /events` | 200/minute |
+| `GET /events/{id}` | 300/minute |
+
+Limits are configurable via environment variables (see [Environment Variables](#environment-variables)).
+
 ## Database Migrations
 
 Schema changes are managed with Alembic. The database is **not** auto-migrated on startup — migrations must be run explicitly.
@@ -85,3 +99,7 @@ cp .env.example .env
 | `DATABASE_URL` | `postgresql+asyncpg://postgres:postgres@localhost:5432/events` | Async Postgres connection string |
 | `DEBUG` | `false` | Enables SQLAlchemy query logging |
 | `LOG_LEVEL` | `INFO` | structlog log level |
+| `INGEST_RATE_LIMIT` | `100/minute` | Rate limit for `POST /events` |
+| `BULK_RATE_LIMIT` | `20/minute` | Rate limit for `POST /events/bulk` |
+| `LIST_RATE_LIMIT` | `200/minute` | Rate limit for `GET /events` |
+| `GET_RATE_LIMIT` | `300/minute` | Rate limit for `GET /events/{id}` |
