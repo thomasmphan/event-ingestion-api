@@ -39,6 +39,9 @@ def postgres_url(ensure_docker: None) -> Generator[str, None, None]:
         else:
             raise RuntimeError("Postgres container did not become ready")
 
+        # pg_isready returns true before Postgres fully accepts asyncpg connections
+        time.sleep(1)
+
         host = pg.get_container_host_ip()
         port = pg.get_exposed_port(5432)
         yield f"postgresql+asyncpg://postgres:postgres@{host}:{port}/events"
