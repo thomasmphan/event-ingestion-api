@@ -5,10 +5,10 @@ import structlog
 
 from app.database import get_db, get_session_factory
 from app.models import Event
-from app.schemas import EventCreate, EventListResponse, EventResponse
+from app.schemas import EventBulkCreate, EventBulkResponse, EventCreate, EventListResponse, EventResponse
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select, and_, or_
+from sqlalchemy import func, insert, select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uuid import UUID
 
@@ -41,6 +41,25 @@ async def create_event(event: EventCreate, db: AsyncSession = Depends(get_db)) -
     await db.refresh(db_event)
     logger.info("event_created", event_id=str(db_event.id), event_type=db_event.event_type)
     return db_event
+
+
+@router.post("/bulk", response_model=EventBulkResponse, status_code=201)
+async def create_events_bulk(body: EventBulkCreate, db: AsyncSession = Depends(get_db)) -> EventBulkResponse:
+    rows = [
+        {
+            "event_type": e.event_type,
+            "source": e.source,
+            "payload": e.payload,
+            "timestamp": e.timestamp,
+        }
+        for e in body.events
+    ]
+    stmt = insert(Event).values(rows).returning(Event)
+    result = await db.execute(stmt)
+    events = list(result.scalars().all())
+    await db.commit()
+    logger.info("events_bulk_created", count=len(events))
+    return EventBulkResponse(created=len(events), items=events)
 
 
 @router.get("", response_model=EventListResponse)

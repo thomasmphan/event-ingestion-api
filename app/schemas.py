@@ -36,6 +36,15 @@ class EventListResponse(BaseModel):
     next_cursor: str | None  # None = no more pages
 
 
+class EventBulkCreate(BaseModel):
+    events: list[EventCreate] = Field(..., min_length=1, max_length=1000)
+
+
+class EventBulkResponse(BaseModel):
+    created: int
+    items: list[EventResponse]
+
+
 class ReadinessResponse(BaseModel):
     status: str
     db: str
