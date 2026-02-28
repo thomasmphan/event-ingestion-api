@@ -2,7 +2,7 @@ import logging
 import structlog
 
 from app.config import settings
-from app.database import Base, engine
+from app.database import engine
 from app.routers import events, health
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -31,10 +31,6 @@ def configure_logging() -> None:
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     logger = structlog.get_logger()
-
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
     logger.info("startup_complete", app=settings.app_name, debug=settings.debug)
     yield
     await engine.dispose()
