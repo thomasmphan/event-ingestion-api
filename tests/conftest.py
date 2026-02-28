@@ -41,12 +41,12 @@ def postgres_url(ensure_docker: None) -> Generator[str, None, None]:
 
         host = pg.get_container_host_ip()
         port = pg.get_exposed_port(5432)
-        yield f"postgresql+asyncpg://postgres:postgres@{host}:{port}/events?sslmode=disable"
+        yield f"postgresql+asyncpg://postgres:postgres@{host}:{port}/events"
 
 
 @pytest_asyncio.fixture
 async def client(postgres_url: str) -> AsyncGenerator[AsyncClient, None]:
-    engine = create_async_engine(postgres_url)
+    engine = create_async_engine(postgres_url, connect_args={"ssl": False})
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
     async with engine.begin() as conn:
