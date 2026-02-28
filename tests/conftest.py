@@ -41,7 +41,7 @@ def postgres_url(ensure_docker: None) -> Generator[str, None, None]:
 
         host = pg.get_container_host_ip()
         port = pg.get_exposed_port(5432)
-        yield f"postgresql+asyncpg://postgres:postgres@{host}:{port}/events"
+        yield f"postgresql+asyncpg://postgres:postgres@{host}:{port}/events?sslmode=disable"
 
 
 @pytest_asyncio.fixture
