@@ -37,6 +37,39 @@ async def test_create_event_missing_required(client: AsyncClient) -> None:
 
 
 # ---------------------------------------------------------------------------
+# POST /events/bulk
+# ---------------------------------------------------------------------------
+
+async def test_bulk_create(client: AsyncClient) -> None:
+    response = await client.post("/events/bulk", json={
+        "events": [
+            {"event_type": "bulk_a", "source": "svc", "payload": {"n": 1}},
+            {"event_type": "bulk_b", "source": "svc", "payload": {"n": 2}},
+            {"event_type": "bulk_c", "payload": {}},
+        ]
+    })
+    assert response.status_code == 201
+    data = response.json()
+    assert data["created"] == 3
+    assert len(data["items"]) == 3
+    # Every item must have a unique DB-generated id and a created_at
+    ids = {item["id"] for item in data["items"]}
+    assert len(ids) == 3
+    for item in data["items"]:
+        assert "created_at" in item
+
+
+async def test_bulk_create_empty_body(client: AsyncClient) -> None:
+    response = await client.post("/events/bulk", json={"events": []})
+    assert response.status_code == 422
+
+
+async def test_bulk_create_missing_event_type(client: AsyncClient) -> None:
+    response = await client.post("/events/bulk", json={"events": [{"source": "svc"}]})
+    assert response.status_code == 422
+
+
+# ---------------------------------------------------------------------------
 # GET /events/{id}
 # ---------------------------------------------------------------------------
 
