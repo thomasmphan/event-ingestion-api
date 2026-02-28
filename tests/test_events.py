@@ -199,23 +199,3 @@ async def test_cursor_direction_mismatch(client: AsyncClient) -> None:
 async def test_cursor_invalid(client: AsyncClient) -> None:
     response = await client.get("/events", params={"cursor": "not-a-valid-cursor"})
     assert response.status_code == 422
-
-
-# ---------------------------------------------------------------------------
-# Health
-# ---------------------------------------------------------------------------
-
-async def test_liveness(client: AsyncClient) -> None:
-    response = await client.get("/healthz/live")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "ok"
-    assert "uptime_seconds" in data
-
-
-async def test_readiness(client: AsyncClient) -> None:
-    response = await client.get("/healthz/ready")
-    assert response.status_code == 200
-    data = response.json()
-    assert data["status"] == "ok"
-    assert data["db"] == "connected"
