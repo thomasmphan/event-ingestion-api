@@ -8,13 +8,14 @@ A production-ready REST API for ingesting and querying events, built with FastAP
 - **SQLAlchemy 2.0** — async ORM with connection pooling
 - **PostgreSQL 16** — primary data store
 - **structlog** — structured JSON logging
-- **pytest + pytest-asyncio** — async test suite (SQLite in-memory, no Postgres needed)
+- **pytest + pytest-asyncio + testcontainers** — async test suite (Postgres via Docker, spun up automatically)
 
 ## API
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/events` | Ingest an event |
+| `POST` | `/events` | Ingest a single event |
+| `POST` | `/events/bulk` | Ingest up to 1000 events in one request |
 | `GET` | `/events` | List events with filtering and cursor pagination |
 | `GET` | `/events/{id}` | Fetch a single event |
 | `GET` | `/healthz/live` | Liveness probe (no DB) |
@@ -40,7 +41,7 @@ python -m venv .venv
 .venv\Scripts\activate      # Windows
 pip install -r requirements.txt
 
-# Run tests (no Postgres required)
+# Run tests (requires Docker Desktop running)
 pytest -v
 
 # Start with Docker

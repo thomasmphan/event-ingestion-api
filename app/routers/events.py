@@ -3,11 +3,13 @@ import base64
 import json
 import structlog
 
+from app.config import settings
 from app.database import get_db, get_session_factory
+from app.limiter import limiter
 from app.models import Event
 from app.schemas import EventBulkCreate, EventBulkResponse, EventCreate, EventListResponse, EventResponse
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import func, insert, select, and_, or_
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from uuid import UUID
@@ -29,7 +31,8 @@ def decode_cursor(cursor: str) -> tuple[datetime, UUID, str]:
 
 
 @router.post("", response_model=EventResponse, status_code=201)
-async def create_event(event: EventCreate, db: AsyncSession = Depends(get_db)) -> Event:
+@limiter.limit(lambda: settings.ingest_rate_limit)
+async def create_event(request: Request, event: EventCreate, db: AsyncSession = Depends(get_db)) -> Event:
     db_event = Event(
         event_type=event.event_type,
         source=event.source,
@@ -44,7 +47,8 @@ async def create_event(event: EventCreate, db: AsyncSession = Depends(get_db)) -
 
 
 @router.post("/bulk", response_model=EventBulkResponse, status_code=201)
-async def create_events_bulk(body: EventBulkCreate, db: AsyncSession = Depends(get_db)) -> EventBulkResponse:
+@limiter.limit(lambda: settings.bulk_rate_limit)
+async def create_events_bulk(request: Request, body: EventBulkCreate, db: AsyncSession = Depends(get_db)) -> EventBulkResponse:
     rows = [
         {
             "event_type": e.event_type,
@@ -63,7 +67,9 @@ async def create_events_bulk(body: EventBulkCreate, db: AsyncSession = Depends(g
 
 
 @router.get("", response_model=EventListResponse)
+@limiter.limit(lambda: settings.list_rate_limit)
 async def list_events(
+    request: Request,
     event_type: str | None = Query(None),
     source: str | None = Query(None),
     start_time: datetime | None = Query(None),
@@ -140,7 +146,8 @@ async def list_events(
 
 
 @router.get("/{event_id}", response_model=EventResponse)
-async def get_event(event_id: UUID, db: AsyncSession = Depends(get_db)) -> Event:
+@limiter.limit(lambda: settings.get_rate_limit)
+async def get_event(request: Request, event_id: UUID, db: AsyncSession = Depends(get_db)) -> Event:
     result = await db.execute(select(Event).where(Event.id == event_id))
     event = result.scalar_one_or_none()
     if not event:

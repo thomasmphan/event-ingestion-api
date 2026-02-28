@@ -4,11 +4,21 @@ import subprocess
 import time
 
 from app.database import Base, get_db, get_session_factory
+from app.limiter import limiter
 from app.main import app
 from collections.abc import AsyncGenerator, Generator
 from httpx import AsyncClient, ASGITransport
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from testcontainers.core.container import DockerContainer
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limiter() -> Generator[None, None, None]:
+    if limiter._limiter is not None:
+        limiter._limiter.storage.reset()
+    yield
+    if limiter._limiter is not None:
+        limiter._limiter.storage.reset()
 
 
 @pytest.fixture(scope="session", autouse=True)

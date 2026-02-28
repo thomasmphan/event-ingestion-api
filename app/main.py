@@ -3,12 +3,15 @@ import structlog
 
 from app.config import settings
 from app.database import engine
+from app.limiter import limiter
 from app.middleware import RequestIDMiddleware
 from app.routers import events, health
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy.exc import IntegrityError, OperationalError
 
 
@@ -44,6 +47,17 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    return JSONResponse(
+        {"detail": f"Rate limit exceeded: {exc.detail}"},
+        status_code=429,
+        headers={"Retry-After": "60"},
+    )
 app.add_middleware(RequestIDMiddleware)
 
 
