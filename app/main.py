@@ -3,6 +3,7 @@ import structlog
 
 from app.config import settings
 from app.database import engine
+from app.middleware import RequestIDMiddleware
 from app.routers import events, health
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -43,6 +44,7 @@ app = FastAPI(
     version="1.0.0",
     lifespan=lifespan,
 )
+app.add_middleware(RequestIDMiddleware)
 
 
 @app.exception_handler(OperationalError)
