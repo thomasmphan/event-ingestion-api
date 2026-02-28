@@ -49,6 +49,28 @@ docker compose up --build
 
 Interactive docs available at `http://localhost:8000/docs` once running.
 
+## Database Migrations
+
+Schema changes are managed with Alembic. The database is **not** auto-migrated on startup — migrations must be run explicitly.
+
+**First-time setup** (after `docker compose up`):
+
+```bash
+alembic upgrade head
+```
+
+**When you change a model** (`app/models.py`):
+
+```bash
+# 1. Generate the migration (review the file before applying)
+alembic revision --autogenerate -m "describe your change"
+
+# 2. Apply it to the database
+alembic upgrade head
+```
+
+Commit the generated migration file in `alembic/versions/` alongside the model change. CI/CD applies migrations before starting new containers.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env` and adjust values:

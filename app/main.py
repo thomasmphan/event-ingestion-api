@@ -28,7 +28,7 @@ def configure_logging() -> None:
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     configure_logging()
     logger = structlog.get_logger()
     logger.info("startup_complete", app=settings.app_name, debug=settings.debug)
