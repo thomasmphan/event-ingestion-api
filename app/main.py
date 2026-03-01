@@ -4,12 +4,14 @@ import structlog
 from app.config import settings
 from app.database import engine
 from app.limiter import limiter
+from app.metrics import rate_limit_exceeded_total
 from app.middleware import RequestIDMiddleware
 from app.routers import events, health
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy.exc import IntegrityError, OperationalError
@@ -49,16 +51,23 @@ app = FastAPI(
 )
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
+app.add_middleware(RequestIDMiddleware)
+
+
+Instrumentator(
+    excluded_handlers=["/metrics", "/healthz/live", "/healthz/ready"],
+    should_group_status_codes=False,
+).instrument(app).expose(app, include_in_schema=False)
 
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    rate_limit_exceeded_total.labels(path=request.url.path).inc()
     return JSONResponse(
         {"detail": f"Rate limit exceeded: {exc.detail}"},
         status_code=429,
         headers={"Retry-After": "60"},
     )
-app.add_middleware(RequestIDMiddleware)
 
 
 @app.exception_handler(OperationalError)

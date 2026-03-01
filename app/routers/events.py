@@ -6,6 +6,7 @@ import structlog
 from app.config import settings
 from app.database import get_db, get_session_factory
 from app.limiter import limiter
+from app.metrics import events_bulk_ingested_total, events_ingested_total
 from app.models import Event
 from app.schemas import EventBulkCreate, EventBulkResponse, EventCreate, EventListResponse, EventResponse
 from datetime import datetime
@@ -42,6 +43,7 @@ async def create_event(request: Request, event: EventCreate, db: AsyncSession = 
     db.add(db_event)
     await db.commit()
     await db.refresh(db_event)
+    events_ingested_total.labels(event_type=db_event.event_type).inc()
     logger.info("event_created", event_id=str(db_event.id), event_type=db_event.event_type)
     return db_event
 
@@ -62,6 +64,7 @@ async def create_events_bulk(request: Request, body: EventBulkCreate, db: AsyncS
     result = await db.execute(stmt)
     events = list(result.scalars().all())
     await db.commit()
+    events_bulk_ingested_total.inc(len(events))
     logger.info("events_bulk_created", count=len(events))
     return EventBulkResponse(created=len(events), items=events)
 
